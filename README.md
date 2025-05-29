@@ -3,8 +3,7 @@
 
 👀 I’m interested in writing about Python, Web3, Blockchain, Data Science, and Cybersecurity. 
 
-- 🌱 I’m currently learning daily.
-- 💞️ I’m looking to collaborate on Blockchain, Web3, Data Science, and Cybersecurity writing projects. 
+- 🌱 I’m currently learning daily. 
 - 📫 How to reach me: via @Ukeziebenezer@yahoo.com
 - 😄 Pronouns: He
 - ⚡ Fun fact: I am calm and funny.
