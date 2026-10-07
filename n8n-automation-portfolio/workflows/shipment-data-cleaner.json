@@ -1,0 +1,433 @@
+{
+  "name": "Shipment Data Cleaner",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "84c6b8f6-b1b2-46bc-95da-84514da3199f",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "url": "https://jsonplaceholder.typicode.com/users",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "8eda4d8e-1a9e-4b3d-aab6-166e45b42871",
+      "name": "HTTP Request",
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "d6ad15f3-4cbc-4767-9242-443b2a7f6e5a",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const shipmentId = $json.id;\n\nconst carrier = $json.name || \"\";\n\nconst validStatuses = [\n  \"delivered\",\n  \"in-transit\",\n  \"failed\"\n];\n\n// Create demo status values\nlet statusOptions = [\n  \"delivered\",\n  \"in-transit\",\n  \"failed\",\n  \"returned\" // invalid on purpose\n];\n\nlet status =\n  statusOptions[shipmentId % 4];\n\nlet errors = [];\n\n// Missing shipment ID\nif (!shipmentId) {\n  errors.push(\"Missing shipment ID\");\n}\n\n// Missing carrier\nif (!carrier) {\n  errors.push(\"Missing carrier\");\n}\n\n// Invalid status\nif (!validStatuses.includes(status)) {\n  errors.push(\"Invalid status\");\n}\n\n// Duplicate Detection\nconst workflowData =\n  $getWorkflowStaticData('global');\n\nif (!workflowData.seenIds) {\n  workflowData.seenIds = [];\n}\n\nif (\n  workflowData.seenIds.includes(\n    shipmentId\n  )\n) {\n  errors.push(\n    \"Duplicate shipment ID\"\n  );\n}\nelse {\n  workflowData.seenIds.push(\n    shipmentId\n  );\n}\n\nreturn {\n  shipment_id: shipmentId,\n  carrier: carrier,\n  weight_kg: shipmentId * 5,\n  destination_country: \"Nigeria\",\n  status: status.toLowerCase(),\n  _error: errors.join(\" | \")\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        16
+      ],
+      "id": "a8bf3549-f9a3-4e54-98b0-e414d75de7d6",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "=delivered",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "9a608233-8eac-46b6-9da8-c48d45694d5a"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "fcc2723f-e209-410b-a9ee-b74e7216a54c",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "in-transit",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "6e721ed7-68cd-4293-a602-94c3d1b2366b",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "failed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "f45f572e-2f25-4f23-8826-d9be1b2a374e",
+                    "leftValue": "={{$json._error}}",
+                    "rightValue": "error",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        864,
+        0
+      ],
+      "id": "bdd39c57-6eb3-42e4-9dbf-63fef9c03a0b",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "maxItems": 50
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        -160
+      ],
+      "id": "dd30769a-ce2d-4b6a-8c29-c8f620cc9351",
+      "name": "Limit",
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1312,
+        -96
+      ],
+      "id": "549991f8-d079-4947-9606-56ebd65c6f65",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst summary = {};\n\nfor (const item of items) {\n\n  const carrier = item.json.carrier;\n  const status = item.json.status;\n\n  if (!summary[carrier]) {\n\n    summary[carrier] = {\n      carrier: carrier,\n      delivered: 0,\n      in_transit: 0,\n      failed: 0\n    };\n\n  }\n\n  if (status === \"delivered\") {\n    summary[carrier].delivered++;\n  }\n\n  else if (status === \"in-transit\") {\n    summary[carrier].in_transit++;\n  }\n\n  else {\n    summary[carrier].failed++;\n  }\n}\n\nreturn Object.values(summary).map(row => ({\n  json: row\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        -96
+      ],
+      "id": "a1e55ec7-fcb1-41e7-828a-8ef95f5917c0",
+      "name": "Code in JavaScript1",
+      "alwaysOutputData": false,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ee015d0a-0d5c-4daa-a5ee-f554208c6b78",
+              "name": "report_type",
+              "value": "shipment_summary",
+              "type": "string"
+            },
+            {
+              "id": "3a0b154d-a7bb-422f-a4e8-2ce052b1edcc",
+              "name": "generated_at",
+              "value": "={{ new Date().toISOString() }}",
+              "type": "string"
+            },
+            {
+              "id": "011b7022-007a-4be8-91ba-b29efc9eadab",
+              "name": "=carrier",
+              "value": "={{$json.carrier}}",
+              "type": "string"
+            },
+            {
+              "id": "6f84ce96-242f-43e0-b15d-b5f4d0eb8d8a",
+              "name": "delivered",
+              "value": "={{$json.delivered}}",
+              "type": "string"
+            },
+            {
+              "id": "c6d664b1-de17-45c5-a3ad-d6cd970ae23d",
+              "name": "in_transit",
+              "value": "={{$json.in_transit}}",
+              "type": "string"
+            },
+            {
+              "id": "e73e2add-fdee-43b8-bc45-70599bc14a23",
+              "name": "failed",
+              "value": "={{$json.failed}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1728,
+        -96
+      ],
+      "id": "82c94efa-3208-4e9c-99d5-ba7f5f5c0f8b",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "binaryPropertyName": "Data",
+        "options": {
+          "format": false,
+          "fileName": "Summarized Data Report"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1936,
+        -96
+      ],
+      "id": "7ece6dbb-c163-4a54-8600-742af13d2e33",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "C:\\Users\\AM TECH\\Downloads",
+        "dataPropertyName": "Data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        2144,
+        -96
+      ],
+      "id": "b6cf02ab-bd47-4c7e-b886-70debbbecd76",
+      "name": "Read/Write Files from Disk"
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ],
+        []
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "tags": []
+}
